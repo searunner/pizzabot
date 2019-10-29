@@ -2,7 +2,10 @@
 using OpenQA.Selenium.Chrome;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 
@@ -16,7 +19,7 @@ namespace PizzaBot.SeleniumHelper
         {
             ChromeOptions options = new ChromeOptions();
             //options.AddArgument("headless");
-            string chromedriverPath = @"E:\Workspace\PizzaBot\PizzaBot\PizzaBot.SeleniumHelper\bin\Debug\netcoreapp3.0";
+            string chromedriverPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).Replace("TelegramService", "SeleniumHelper");
             driver = new ChromeDriver(chromedriverPath, options, TimeSpan.FromMinutes(10));
         }
 
@@ -37,20 +40,22 @@ namespace PizzaBot.SeleniumHelper
             return pizzaList;
         }
 
-        public string CompleteOrder(string phoneNumber)
+        public void CompleteOrder(string phoneNumber, string userName)
         {
             driver.Navigate().GoToUrl("https://www.andys.md/ru/catalog/8");
 
             FindElementsByXpath(".//*[@class='bag__tobag']")[0].Click();          
-            FindElementsByXpath(".//button[@class='button button_ord']")[0].Click();            
-            FindElementsByXpath(".//input[@class='input-text-plc__input']")[0].SendKeys("Studenților");            
-            FindElementsByXpath(".//input[@class='input-text-plc__input']")[1].SendKeys("9/11");            
-            FindElementsByXpath(".//input[@class='input-text-plc__input']")[2].SendKeys("-");            
-            FindElementsByXpath(".//input[@class='input-text-plc__input']")[6].SendKeys(phoneNumber);            
+            FindElementsByXpath(".//button[@class='button button_ord']")[0].Click();
+            
+            FindElementsByXpath(".//input[@class='input-text-plc__input']")[0].SendKeys(userName);            
+            FindElementsByXpath(".//input[@class='input-text-plc__input']")[1].SendKeys(GetSettingFromConfiguration("AddressStreet"));            
+            FindElementsByXpath(".//input[@class='input-text-plc__input']")[2].SendKeys(GetSettingFromConfiguration("AddressHouse"));            
+            FindElementsByXpath(".//input[@class='input-text-plc__input']")[3].SendKeys(GetSettingFromConfiguration("AddressAppartment"));            
+            
+            FindElementsByXpath(".//input[@class='input-text-plc__input']")[7].SendKeys(phoneNumber);            
             FindElementsByXpath(".//button[@class='cash button button_met ']")[0].Click();
-            Thread.Sleep(TimeSpan.FromSeconds(1));
-            //FindElementByXpath(".//button[@class='button button_ord']").Click();
-            return "1234123123";
+            Thread.Sleep(TimeSpan.FromSeconds(1));            
+            
             //driver.Quit();
         }
 
@@ -67,17 +72,46 @@ namespace PizzaBot.SeleniumHelper
             {
                 driver.Quit();
             }
-
-
         }
 
-        public IList<IWebElement> FindElementsByXpath(string xpath)
+        public string SendOrderToAndys()
+        {
+            FindElementsByXpath(".//button[@class='button button_ord']")[0].Click();
+            Thread.Sleep(TimeSpan.FromMilliseconds(500));
+            FindElementsByXpath(".//button[@class='button button_ord']")[0].Click();
+            Thread.Sleep(TimeSpan.FromMilliseconds(500));
+
+            var orderInfo = GetOrderInfo();            
+
+            return orderInfo;
+        }
+
+        public string GetOrderInfo()
+        {
+            var elements = FindElementsByXpath("//div[@class = 'check__info-prop']");
+
+            var completeInfo = new StringBuilder(); 
+            
+            var orderNumber = elements[0].FindElements(By.XPath(".//div"))[1].Text;
+            var amount = elements[4].FindElements(By.XPath(".//div"))[1].Text;
+            var eta = elements[5].FindElements(By.XPath(".//div"))[1].Text;
+            
+            completeInfo
+                .AppendLine(orderNumber)
+                .AppendLine(amount)
+                .AppendLine(eta);
+            
+
+            return completeInfo.ToString();
+        }
+
+        private IList<IWebElement> FindElementsByXpath(string xpath)
         {
             var elements = driver.FindElements(By.XPath(xpath));
             return elements;
         }
 
-        public IWebElement FindElementByXpath(string xpath)
+        private IWebElement FindElementByXpath(string xpath)
         {
             try
             {
@@ -90,6 +124,11 @@ namespace PizzaBot.SeleniumHelper
                 return null;
             }
 
+        }
+
+        private string GetSettingFromConfiguration(string key)
+        {
+            return ConfigurationManager.AppSettings[key];
         }
 
     }

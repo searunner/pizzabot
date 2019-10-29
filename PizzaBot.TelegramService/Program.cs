@@ -4,6 +4,7 @@ using PizzaBot.LUIS;
 using PizzaBot.SeleniumHelper;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Threading;
 using Telegram.Bot;
@@ -22,7 +23,8 @@ namespace PizzaBot.TelegramService
         public Program()
         {
             site = new AndysPizzaSite();
-            botClient = new TelegramBotClient("333986430:AAGEjLTakbjX5M-rwJ2UMJ8p1-nu6hS61i4");
+            var telegramApiKey = ConfigurationManager.AppSettings["TelegramApiKey"];
+            botClient = new TelegramBotClient(telegramApiKey);
             var me = botClient.GetMeAsync().Result;
             Console.WriteLine($"Hello, I'm Pizza Bot! How can I help you {me.FirstName}?");
 
@@ -34,9 +36,7 @@ namespace PizzaBot.TelegramService
         }
 
         static void Main(string[] args)
-        {
-            //var list = AndysPizzaSite.GetPizzas();
-            //Console.WriteLine("Hello World!");           
+        {                 
             var program = new Program();
         }
 
@@ -44,52 +44,34 @@ namespace PizzaBot.TelegramService
         {
             if (e.Message.Text != null)
             {              
-
-                var responce = LUISHelper.AddUtterances(e.Message.Text).GetAwaiter().GetResult();
-
-                switch (responce.topScoringIntent.intent)
+                if(e.Message.Text.ToLower() == "send")
                 {
-                    case "AddPizzaToCard": AddPizzaToCard(e.Message.Chat.Id, responce.entities[0].entity); 
-                        break;
-                    case "ExecuteOrder": OrderPizza(e.Message.Chat.Id, responce.entities[0].entity);
-                        break;
-                    case "GetListOfPizza": DisplayListOfPizza(e.Message.Chat.Id);
-                        break;
-                    case "Salutation":
-                        Salutation(e.Message.Chat.Id, e.Message.From.FirstName);
-                        break;
-
-                    default: IntentNotFound(e.Message.Chat.Id);
-                        break;
+                    SendOrderToAndys(e.Message.Chat.Id);
                 }
+                else
+                {
+                    var responce = LUISHelper.AddUtterances(e.Message.Text).GetAwaiter().GetResult();
 
-                //var newPhoto = new InputOnlineFile("http://andys.md/public/menu/thumbs/version_220x310x1/bdfbc936fb2c6f3e0fd0e777dcfd2001.jpg");
-                //var pizzas = new List<string> { "Funghi", "4Cheese", "Capricioasa" };
-                //Console.WriteLine($"Received a text message in chat {e.Message.Chat.Id}.");
-                //var pollMessage = await botClient.SendPollAsync(botClient.BotId, "What pizza would you like?", pizzas);
-                //var photo = await botClient.SendPhotoAsync(e.Message.Chat.Id, newPhoto, "<a href='google.com'>4Cheese</a>", Telegram.Bot.Types.Enums.ParseMode.Html, true);
-                //var articles = new List<InlineQueryResultArticle>
-                //   {
-                //      new InlineQueryResultArticle("1","test1", new InputTextMessageContent("Test1")),
-                //      new InlineQueryResultArticle("2","test2", new InputTextMessageContent("Test2"))
-                //   };
-                //var rkm = new ReplyKeyboardMarkup();
-                //rkm.Keyboard =
-                //    new KeyboardButton[][]
-                //    {
-                //        new KeyboardButton[]
-                //        {
-                //            new KeyboardButton("item"),
-                //            new KeyboardButton("item")
-                //        },
-                //        new KeyboardButton[]
-                //        {
-                //            new KeyboardButton("item")
-                //        }
-                //    };
+                    switch (responce.topScoringIntent.intent)
+                    {
+                        case "AddPizzaToCard":
+                            AddPizzaToCard(e.Message.Chat.Id, responce.entities[0].entity);
+                            break;
+                        case "ExecuteOrder":
+                            OrderPizza(e.Message.Chat.Id, responce.entities[0].entity, e.Message.From.FirstName);
+                            break;
+                        case "GetListOfPizza":
+                            DisplayListOfPizza(e.Message.Chat.Id);
+                            break;
+                        case "Salutation":
+                            Salutation(e.Message.Chat.Id, e.Message.From.FirstName);
+                            break;
 
-                //var button = await botClient.AnswerInlineQueryAsync("1", articles);
-                //await botClient.SendTextMessageAsync(e.Message.Chat.Id, "Text", Telegram.Bot.Types.Enums.ParseMode.Default, false, false, 0, rkm);
+                        default:
+                            IntentNotFound(e.Message.Chat.Id);
+                            break;
+                    }
+                }                
             }
         }
 
@@ -116,11 +98,18 @@ namespace PizzaBot.TelegramService
             await botClient.SendTextMessageAsync(chatId, $"Pizza {pizzaName} has been added to card. Add more pizza or complete the order.");
         }
 
-        async void OrderPizza(long chatId, string phoneNumber)
+        async void OrderPizza(long chatId, string phoneNumber, string userName)
         {
-            var orderNumber  = site.CompleteOrder(phoneNumber);
+           site.CompleteOrder(phoneNumber, userName);
 
-            await botClient.SendTextMessageAsync(chatId, $"Order {orderNumber} successfully completed! The operator will call you soon.");
+            await botClient.SendTextMessageAsync(chatId, "Your order is almost done, type 'Send' for confirmation");
+        }
+
+        async void SendOrderToAndys(long chatId)
+        {
+            var orderNumber = site.SendOrderToAndys();
+
+            await botClient.SendTextMessageAsync(chatId, $"Order {orderNumber} is being processed, operator will call you in 5 minutes.");
         }
 
         async void IntentNotFound(long chatId)
