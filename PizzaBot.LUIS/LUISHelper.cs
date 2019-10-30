@@ -11,14 +11,14 @@ namespace PizzaBot.LUIS
     public class LUISHelper
     {
         // NOTE: Replace this example LUIS application ID with the ID of your LUIS application.
-        static string appID = "844971e8-f5cf-43fc-ace2-87dd75ebcb57";
+        static string appID = "app id here";
 
         // NOTE: Replace this example LUIS application version number with the version number of your LUIS application.
         static string appVersion = "0.1";
-        static string authoringKey = "caa91b28026245a0a27eb0f5ab2a6737";
+        static string authoringKey = "your authoring key from luis here";
 
         // NOTE: Replace this example LUIS authoring key with a valid key.
-        static string pizzaEndPoint = "https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/844971e8-f5cf-43fc-ace2-87dd75ebcb57?verbose=true&timezoneOffset=0&subscription-key=caa91b28026245a0a27eb0f5ab2a6737&q=";
+        static string pizzaEndPoint = "your luis endpoint here";
              
 
         async static Task<HttpResponseMessage> SendGet(string uri)
